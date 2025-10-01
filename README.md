@@ -52,3 +52,7 @@ For running the notebooks we used kaggle platform to be able to use GPU for free
 * **Curated Hate Speech Dataset** (Mody et al., 2022).
 
 * **Manually Annotated Reddit subset** .
+
+*Hofmann, V., Schütze, H., & Pierrehumbert, J. B. (2022). The Reddit Politosphere: A Large-Scale Text and Network Resource of Online Political Discourse. Proceedings of the International AAAI Conference on Web and Social Media, 16, 1259–1267. https://doi.org/10.1609/icwsm.v16i1.19377
+*Mody, D., Huang, Y., & Alves de Oliveira, T. E. (2023). A curated dataset for hate speech detection on social media text. Data in Brief, 46, 108832. https://doi.org/10.1016/j.dib.2022.108832
+
