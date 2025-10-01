@@ -34,17 +34,19 @@ if r.status_code == 200:
 else:
     raise RuntimeError("Failed to fetch Hatebase lexicon from GitHub")
 
-#text normalization
+# text normalization
 LEET_MAP = str.maketrans({"@": "a", "$": "s", "0": "o",
                          "1": "i", "!": "i", "3": "e", "4": "a", "5": "s", "7": "t"})
+
 
 def normalize_text(t: str) -> str:
     t = unicodedata.normalize("NFKC", t or "").lower()
     t = t.translate(LEET_MAP)
-    t = re.sub(r"(.)\1{2,}", r"\1\1", t)          
-    t = re.sub(r"[^a-z0-9]+", " ", t)           
+    t = re.sub(r"(.)\1{2,}", r"\1\1", t)
+    t = re.sub(r"[^a-z0-9]+", " ", t)
     t = re.sub(r"\s+", " ", t).strip()
     return t
+
 
 def build_patterns(terms):
     pats = []
@@ -68,11 +70,14 @@ def build_patterns(terms):
 
 hs_patterns = build_patterns(hs_terms)
 
+
 def contains_hate_keyword(text: str) -> bool:
     z = normalize_text(text)
     return any(p.search(z) for p in hs_patterns)
 
-#helpers for bot dropping
+# helpers for bot dropping
+
+
 def is_likely_bot(author, body):
     if not author:
         return True
@@ -88,6 +93,8 @@ def format_date(utc):
         return datetime.utcfromtimestamp(int(utc)).strftime('%Y-%m-%d %H:%M:%S')
     except Exception:
         return ""
+
+
 pairs_by_year = defaultdict(list)
 seen_ids = set()
 

@@ -1,4 +1,8 @@
-import os, json, random, time
+from datasets import Dataset as HFDataset
+import os
+import json
+import random
+import time
 import numpy as np
 import pandas as pd
 from dataclasses import dataclass
@@ -12,14 +16,16 @@ from transformers import (
     AutoTokenizer, AutoModelForSequenceClassification,
     TrainingArguments, Trainer, DataCollatorWithPadding, EarlyStoppingCallback
 )
-#config
+# config
+
+
 @dataclass
 class CFG:
     # Training corpus (Mody et al.)
     DATA_PATH: str = "/kaggle/input/hate-speech-detection-curated-dataset/HateSpeechDatasetBalanced.csv"
     TEXT_COL: str = "Content"
     LABEL_COL: str = "Label"
-    REDDIT_JSONL_PATH: str = "/kaggle/input/annotated-data-20-08/all_anotdata_combined.jsonl" 
+    REDDIT_JSONL_PATH: str = "/kaggle/input/annotated-data-20-08/all_anotdata_combined.jsonl"
 
     OUTPUT_DIR: str = "./bert_hs_model"
     MODEL_NAME: str = "bert-base-uncased"
@@ -36,6 +42,7 @@ class CFG:
     NUM_WORKERS: int = 2
     MAX_SAMPLES: int = 50_000  # cap for training corpus
 
+
 cfg = CFG()
 os.makedirs(cfg.OUTPUT_DIR, exist_ok=True)
 
@@ -45,8 +52,11 @@ if torch.cuda.is_available():
     print(f"GPU: {torch.cuda.get_device_name()}")
 
 # Repro
-random.seed(cfg.SEED); np.random.seed(cfg.SEED); torch.manual_seed(cfg.SEED)
-if torch.cuda.is_available(): torch.cuda.manual_seed_all(cfg.SEED)
+random.seed(cfg.SEED)
+np.random.seed(cfg.SEED)
+torch.manual_seed(cfg.SEED)
+if torch.cuda.is_available():
+    torch.cuda.manual_seed_all(cfg.SEED)
 
 print("Loading Mody et al. training corpus …")
 t0 = time.time()
@@ -59,7 +69,7 @@ df.columns = [c.strip() for c in df.columns]
 df[cfg.TEXT_COL] = df[cfg.TEXT_COL].astype(str).str.strip()
 df[cfg.LABEL_COL] = (
     df[cfg.LABEL_COL].astype(str).str.strip().str.lower()
-      .map({"0":0, "1":1, "false":0, "true":1, "non-hateful":0, "hateful":1})
+    .map({"0": 0, "1": 1, "false": 0, "true": 1, "non-hateful": 0, "hateful": 1})
 )
 df = df.dropna(subset=[cfg.TEXT_COL, cfg.LABEL_COL])
 df[cfg.LABEL_COL] = df[cfg.LABEL_COL].astype(int)
@@ -67,7 +77,8 @@ df = df[df[cfg.TEXT_COL].str.len() > 0].reset_index(drop=True)
 
 if len(df) > cfg.MAX_SAMPLES:
     print(f"Limiting dataset to {cfg.MAX_SAMPLES:,} samples")
-    df = df.sample(n=cfg.MAX_SAMPLES, random_state=cfg.SEED).reset_index(drop=True)
+    df = df.sample(n=cfg.MAX_SAMPLES,
+                   random_state=cfg.SEED).reset_index(drop=True)
 
 print(f"Final dataset size: {len(df):,}")
 print("Label distribution:\n", df[cfg.LABEL_COL].value_counts(normalize=True))
@@ -79,19 +90,21 @@ train_df, val_df = train_test_split(
     df, test_size=cfg.VAL_FRAC, random_state=cfg.SEED,
     stratify=y if can_stratify else None
 )
-print(f"Train: {len(train_df):,} | Val: {len(val_df):,} | Stratified: {can_stratify}")
+print(
+    f"Train: {len(train_df):,} | Val: {len(val_df):,} | Stratified: {can_stratify}")
 
 # Tokenizer / HF datasets
 
 tokenizer = AutoTokenizer.from_pretrained(cfg.MODEL_NAME, use_fast=True)
 data_collator = DataCollatorWithPadding(tokenizer=tokenizer, padding="longest")
 
-from datasets import Dataset as HFDataset
 
 def to_hf(ds: pd.DataFrame) -> HFDataset:
     return HFDataset.from_pandas(
-        ds[[cfg.TEXT_COL, cfg.LABEL_COL]].rename(columns={cfg.TEXT_COL: "text", cfg.LABEL_COL: "labels"})
+        ds[[cfg.TEXT_COL, cfg.LABEL_COL]].rename(
+            columns={cfg.TEXT_COL: "text", cfg.LABEL_COL: "labels"})
     )
+
 
 def tok_fn(batch):
     return tokenizer(
@@ -99,23 +112,35 @@ def tok_fn(batch):
         padding=False, return_attention_mask=True
     )
 
+
 print("Tokenizing Mody train/val …")
-train_hf = to_hf(train_df).map(tok_fn, batched=True, remove_columns=["text"], num_proc=4)
-val_hf   = to_hf(val_df).map(tok_fn,   batched=True, remove_columns=["text"], num_proc=4)
+train_hf = to_hf(train_df).map(tok_fn, batched=True,
+                               remove_columns=["text"], num_proc=4)
+val_hf = to_hf(val_df).map(tok_fn,   batched=True,
+                           remove_columns=["text"], num_proc=4)
 print("Tokenization done.")
 
 # Model
 
-model = AutoModelForSequenceClassification.from_pretrained(cfg.MODEL_NAME, num_labels=2).to(device)
+model = AutoModelForSequenceClassification.from_pretrained(
+    cfg.MODEL_NAME, num_labels=2).to(device)
+
 
 def class_weights_from_series(series) -> Optional[torch.Tensor]:
-    n0 = int((series==0).sum()); n1 = int((series==1).sum())
-    if n0 == 0 or n1 == 0: return None
-    N = n0 + n1; w0 = N/(2*n0); w1 = N/(2*n1); s = (w0+w1)/2
+    n0 = int((series == 0).sum())
+    n1 = int((series == 1).sum())
+    if n0 == 0 or n1 == 0:
+        return None
+    N = n0 + n1
+    w0 = N/(2*n0)
+    w1 = N/(2*n1)
+    s = (w0+w1)/2
     return torch.tensor([w0/s, w1/s], dtype=torch.float)
+
 
 class_weights = class_weights_from_series(train_df[cfg.LABEL_COL])
 print("Class weights:", None if class_weights is None else class_weights.tolist())
+
 
 class WeightedTrainer(Trainer):
     def __init__(self, *args, class_weights=None, **kwargs):
@@ -130,18 +155,23 @@ class WeightedTrainer(Trainer):
         outputs = model(**inputs)
         logits = outputs.get("logits")
         loss_fct = torch.nn.CrossEntropyLoss(
-            weight=self.class_weights.to(logits.device) if self.class_weights is not None else None
+            weight=self.class_weights.to(
+                logits.device) if self.class_weights is not None else None
         )
         loss = loss_fct(logits, labels)
         return (loss, outputs) if return_outputs else loss
+
 
 def compute_metrics(eval_pred):
     logits, labels = eval_pred
     preds = np.argmax(logits, axis=-1)
     acc = accuracy_score(labels, preds)
-    p, r, f1, _ = precision_recall_fscore_support(labels, preds, average="binary", zero_division=0)
-    pm, rm, f1m, _ = precision_recall_fscore_support(labels, preds, average="macro", zero_division=0)
+    p, r, f1, _ = precision_recall_fscore_support(
+        labels, preds, average="binary", zero_division=0)
+    pm, rm, f1m, _ = precision_recall_fscore_support(
+        labels, preds, average="macro", zero_division=0)
     return {"accuracy": acc, "precision": p, "recall": r, "f1": f1, "f1_macro": f1m}
+
 
 args = TrainingArguments(
     output_dir=cfg.OUTPUT_DIR,
@@ -173,7 +203,8 @@ args = TrainingArguments(
 
 callbacks = []
 if cfg.USE_EARLY_STOP:
-    callbacks.append(EarlyStoppingCallback(early_stopping_patience=cfg.EARLY_STOP_PATIENCE))
+    callbacks.append(EarlyStoppingCallback(
+        early_stopping_patience=cfg.EARLY_STOP_PATIENCE))
 
 trainer = WeightedTrainer(
     model=model,
@@ -195,7 +226,7 @@ print("Best checkpoint:", trainer.state.best_model_checkpoint)
 trainer.save_model(cfg.OUTPUT_DIR)
 tokenizer.save_pretrained(cfg.OUTPUT_DIR)
 with open(os.path.join(cfg.OUTPUT_DIR, "label_mapping.json"), "w") as f:
-    json.dump({"0":"non-hateful","1":"hateful"}, f, indent=2)
+    json.dump({"0": "non-hateful", "1": "hateful"}, f, indent=2)
 
 # In-domain validation report (Mody)
 metrics_val = trainer.evaluate(eval_dataset=val_hf)
@@ -203,6 +234,7 @@ print("Validation metrics (Mody):", metrics_val)
 print(f"Model saved to: {cfg.OUTPUT_DIR}")
 
 # Evaluation on Reddit manual subset
+
 
 def load_reddit_jsonl_for_hs(path: str) -> pd.DataFrame:
     rows: List[Dict] = []
@@ -228,25 +260,28 @@ def load_reddit_jsonl_for_hs(path: str) -> pd.DataFrame:
             except Exception:
                 # allow stringy labels "0"/"1"/"true"/"false"
                 s = str(y).strip().lower()
-                if s in {"1","true","hateful"}:
+                if s in {"1", "true", "hateful"}:
                     y = 1
-                elif s in {"0","false","non-hateful"}:
+                elif s in {"0", "false", "non-hateful"}:
                     y = 0
                 else:
                     continue
-            rows.append({"text": text.strip(), "labels": y, "rid": obj.get("reply_id") or obj.get("id") or f"r{i}"})
+            rows.append({"text": text.strip(), "labels": y, "rid": obj.get(
+                "reply_id") or obj.get("id") or f"r{i}"})
     return pd.DataFrame(rows)
+
 
 print("\nLoading Reddit subset for evaluation …")
 reddit_df = load_reddit_jsonl_for_hs(cfg.REDDIT_JSONL_PATH)
 print(f"Reddit labeled rows: {len(reddit_df):,}")
 if len(reddit_df) == 0:
-    raise RuntimeError("No usable rows found in Reddit JSONL. Check path/fields: reply/HS_label.")
+    raise RuntimeError(
+        "No usable rows found in Reddit JSONL. Check path/fields: reply/HS_label.")
 
-from datasets import Dataset as HFDataset
-reddit_hf = HFDataset.from_pandas(reddit_df[["text","labels","rid"]])
+reddit_hf = HFDataset.from_pandas(reddit_df[["text", "labels", "rid"]])
 reddit_hf = reddit_hf.map(
-    lambda b: tokenizer(b["text"], truncation=True, max_length=cfg.MAX_LEN, padding=False, return_attention_mask=True),
+    lambda b: tokenizer(b["text"], truncation=True, max_length=cfg.MAX_LEN,
+                        padding=False, return_attention_mask=True),
     batched=True, remove_columns=["text"], num_proc=4
 )
 
@@ -257,7 +292,8 @@ reddit_labels = np.array(reddit_df["labels"].tolist())
 reddit_preds = reddit_logits.argmax(axis=-1)
 
 acc = accuracy_score(reddit_labels, reddit_preds)
-p, r, f1, _ = precision_recall_fscore_support(reddit_labels, reddit_preds, average="binary", zero_division=0)
+p, r, f1, _ = precision_recall_fscore_support(
+    reddit_labels, reddit_preds, average="binary", zero_division=0)
 print({
     "reddit_accuracy": acc,
     "reddit_precision": p,
@@ -268,7 +304,7 @@ print("\nReddit classification report (per-class):\n",
       classification_report(reddit_labels, reddit_preds, digits=4, zero_division=0))
 
 # Save Reddit predictions for error analysis
-probs = torch.softmax(torch.tensor(reddit_logits), dim=-1).numpy()[:,1]
+probs = torch.softmax(torch.tensor(reddit_logits), dim=-1).numpy()[:, 1]
 out = reddit_df.copy()
 out["pred"] = reddit_preds
 out["prob_HS1"] = probs
