@@ -51,6 +51,4 @@ For running the notebooks we used kaggle platform to be able to use GPU for free
 
 * **Curated Hate Speech Dataset** (Mody et al., 2022).
 
-* **Annotated Reddit set** .
-
-```
+* **Manually Annotated Reddit subset** .
