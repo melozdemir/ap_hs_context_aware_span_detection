@@ -22,12 +22,12 @@ We provided: (1) annotation guidelines and a manually annotated Reddit dataset; 
 │
 ├── ap_detection/
 │   ├── context_ap_classifier_binary_bert_chunked.py   # reply or reply+context binary AP
-│   ├── ap_detection_spanleftright.py                  # [SPAN][LCTX][RCTX] (+parent) AP classifier
+│   ├── context_ap_span_left_right_parent.py                  # [SPAN][LCTX][RCTX] (+parent) AP classifier
 │   └── ap_inference.py                                # batched inference over JSONL
 │
 ├── hs_detection/
-│   ├── hate_s_claffier.py                # BERT fine-tuning on Mody et al. (2022)
-│   └── hs_inference.py                   # batched inference over JSONL
+│   ├── hate_speech_classifier.py                # BERT fine-tuning on Mody et al. (2022)
+│   └── hate_speech_inference.py                   # batched inference over JSONL
 │
 ├── analysis/
 │   ├── ap_analysis.py               
