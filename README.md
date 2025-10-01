@@ -44,7 +44,6 @@ We release: (1) annotation guidelines and a manually annotated Reddit dataset; (
 └── README.md
 ```
 
----
 
 ## Quick start
 
@@ -61,7 +60,3 @@ For running the notebooks we used kaggle platform to be able to use GPU for free
 
 * **Annotated Reddit set** .
 
-
-
-
----
