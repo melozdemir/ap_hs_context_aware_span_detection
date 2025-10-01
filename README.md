@@ -40,10 +40,10 @@ We provided: (1) annotation guidelines and a manually annotated Reddit dataset; 
 │
 ├── requirements.txt
 └── README.md
-```
+
 
 For running the notebooks we used kaggle platform to be able to use GPU for free. 
-```
+
 ```
 ## Used Datasets
 
