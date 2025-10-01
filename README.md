@@ -2,7 +2,8 @@
 
 This repository contains code and dataset for the paper:
 
-**Context-aware span detection, binary classification, and election-period analysis**
+**Affective Polarization and Hate Speech in Reddit Political Discourse: U.S.
+Presidential Elections Analysis Between 2012-2016**
 
 > Annotation guidelines, models, and an analysis of the 15-day windows before the 2012 and 2016 U.S. elections
 
@@ -42,6 +43,7 @@ We provided: (1) annotation guidelines and a manually annotated Reddit dataset; 
 ```
 
 For running the notebooks we used kaggle platform to be able to use GPU for free. 
+```
 ```
 ## Used Datasets
 
